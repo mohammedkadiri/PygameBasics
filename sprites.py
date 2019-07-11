@@ -2,88 +2,143 @@
 import pygame
 import random
 
-black = (0, 0, 0)
-white = (255, 255, 255)
-red = (255, 0, 0)
+BLACK = (0, 0, 0)
+WHITE = (255, 255, 255)
+RED = (255, 0, 0)
+
+SCREEN_WIDTH = 700
+SCREEN_HEIGHT = 500
 
 class Block(pygame.sprite.Sprite):
-    def __init__(self, color, width, height):
-        pygame.sprite.Sprite.__init__(self)
+    """ This class represents a simple block the player collects. """
 
+    def __init__(self, color, width, height):
+        super().__init__()
         self.image = pygame.Surface([width, height])
         self.image.fill(color)
         self.rect = self.image.get_rect()
 
     def reset_pos(self):
         self.rect.y = -20
-        self.rect.x = random.randrange(700-20)
+        self.rect.x = random.randrange(SCREEN_WIDTH - 20)
 
     def update(self):
+        """ Automatically called when we need to move the block."""
         self.rect.y += 1
 
-        if self.rect.y > 410:
+        if self.rect.y > SCREEN_HEIGHT + self.rect.height:
             self.reset_pos()
 
 class Player(Block):
-    def update(self):
-        pos = pygame.mouse.get_pos()
+    """This class represnets the player. """
+    def __init__(self, color, width, height):
+        super().__init__(color, width, height)
 
+    def update(self):
+        """ Update the player location. """
+        pos = pygame.mouse.get_pos()
         self.rect.x = pos[0]
         self.rect.y = pos[1]
 
 
-pygame.init()
 
-screen_width = 700
-screen_height = 400
-screen = pygame.display.set_mode([screen_width, screen_height])
+class Game(object):
+    """This class represents an instance of the game. If we need to
+    reset the game we'd just need to create a new instance of this
+    class. """
 
-block_list = pygame.sprite.Group()
+    def __init__(self):
+        self.score = 0
+        self.game_over = False
 
-all_sprites_list = pygame.sprite.Group()
+        # create sprite lists
+        self.block_list = pygame.sprite.Group()
+        self.all_sprites_list = pygame.sprite.Group()
 
-for i in range(50):
-    block = Block(black, 20, 15)
+        # Create the block of sprites
+        for i in range(50):
+            block = Block(BLACK, 20, 15)
 
-    block.rect.x = random.randrange(screen_width)
-    block.rect.y = random.randrange(screen_height)
+            block.rect.x = random.randrange(SCREEN_WIDTH)
+            block.rect.y = random.randrange(-300, SCREEN_HEIGHT)
 
-    block_list.add(block)
-    all_sprites_list.add(block)
+            self.block_list.add(block)
+            self.all_sprites_list.add(block)
+
+        # Create the player
+        self.player = Player(RED,20,15)
+        self.all_sprites_list.add(self.player)
+
+    def process_events(self):
+
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                return True
+            if event.type == pygame.MOUSEBUTTONDOWN:
+                if self.game_over:
+                    self.__init__()
+        return False
+
+    def run_logic(self):
+
+        if not self.game_over:
+            self.all_sprites_list.update()
+
+            blocks_hit_list = pygame.sprite.spritecollide(self.player, self.block_list, True)
+
+            for block in blocks_hit_list:
+                self.score += 1
+                print(self.score)
+
+            if len(self.block_list) == 0:
+                self.game_over = True
+
+    def display_frame(self, screen):
+        screen.fill(WHITE)
+
+        if self.game_over:
+            # font = pygame.font.Font("Serif", 25)
+            font = pygame.font.SysFont("serif", 25)
+            text = font.render("Game Over, click to restart", True, BLACK)
+            center_x = (SCREEN_WIDTH // 2) - (text.get_width() // 2)
+            center_y = (SCREEN_HEIGHT // 2) - (text.get_height() // 2)
+            screen.blit(text, [center_x, center_y])
+
+        if not self.game_over:
+            self.all_sprites_list.draw(screen)
+
+        pygame.display.flip()
 
 
-player = Player(red, 20, 15)
-all_sprites_list.add(player)
+def main():
 
-done = False
+    pygame.init()
 
-clock = pygame.time.Clock()
+    size = [SCREEN_WIDTH, SCREEN_HEIGHT]
+    screen = pygame.display.set_mode(size)
 
-score = 0
+    pygame.display.set_caption("My Game")
+    pygame.mouse.set_visible(False)
 
 
-while not done:
+    done = False
+    clock = pygame.time.Clock()
 
-    for event in pygame.event.get():
-        if event.type == pygame.QUIT:
-            done = True
+    game = Game()
 
-    screen.fill(white)
 
-    all_sprites_list.update()
+    while not done:
 
-    blocks_hit_list = pygame.sprite.spritecollide(player, block_list, False)
+        done = game.process_events()
 
-    for block in blocks_hit_list:
-        score += 1
-        print(score)
-        block.reset_pos()
+        game.run_logic()
 
-    all_sprites_list.draw(screen)
+        game.display_frame(screen)
 
-    clock.tick(20)
+        clock.tick(20)
 
-    pygame.display.flip()
+    pygame.quit()
+    
 
-pygame.quit()
-
+if __name__ == '__main__':
+    main()
